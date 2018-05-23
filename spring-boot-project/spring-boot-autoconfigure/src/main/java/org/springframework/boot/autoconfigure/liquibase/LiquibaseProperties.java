@@ -34,6 +34,10 @@ import org.springframework.util.Assert;
 public class LiquibaseProperties {
 
 	/**
+	 *  Append Spring-Boot profile(s) to context(s)
+	 */
+	private boolean appendProfilesToContext = false;
+	/**
 	 * Change log configuration path.
 	 */
 	private String changeLog = "classpath:/db/changelog/db.changelog-master.yaml";
@@ -98,6 +102,14 @@ public class LiquibaseProperties {
 	 * Whether rollback should be tested before update is performed.
 	 */
 	private boolean testRollbackOnUpdate;
+
+	public boolean isAppendProfilesToContext() {
+		return appendProfilesToContext;
+	}
+
+	public void setAppendProfilesToContext(boolean appendProfilesToContext) {
+		this.appendProfilesToContext = appendProfilesToContext;
+	}
 
 	public String getChangeLog() {
 		return this.changeLog;

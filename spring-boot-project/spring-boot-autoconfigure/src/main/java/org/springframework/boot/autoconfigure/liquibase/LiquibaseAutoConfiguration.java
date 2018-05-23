@@ -45,12 +45,14 @@ import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.orm.jpa.AbstractEntityManagerFactoryBean;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * {@link EnableAutoConfiguration Auto-configuration} for Liquibase.
@@ -95,15 +97,18 @@ public class LiquibaseAutoConfiguration {
 
 		private final DataSource liquibaseDataSource;
 
+		private final String activeProfilesCsv;
+
 		public LiquibaseConfiguration(LiquibaseProperties properties,
 				DataSourceProperties dataSourceProperties, ResourceLoader resourceLoader,
 				ObjectProvider<DataSource> dataSource,
-				@LiquibaseDataSource ObjectProvider<DataSource> liquibaseDataSource) {
+				@LiquibaseDataSource ObjectProvider<DataSource> liquibaseDataSource, Environment environment) {
 			this.properties = properties;
 			this.dataSourceProperties = dataSourceProperties;
 			this.resourceLoader = resourceLoader;
 			this.dataSource = dataSource.getIfUnique();
 			this.liquibaseDataSource = liquibaseDataSource.getIfAvailable();
+			this.activeProfilesCsv = StringUtils.arrayToCommaDelimitedString(environment.getActiveProfiles());
 		}
 
 		@PostConstruct
@@ -122,7 +127,7 @@ public class LiquibaseAutoConfiguration {
 		public SpringLiquibase liquibase() {
 			SpringLiquibase liquibase = createSpringLiquibase();
 			liquibase.setChangeLog(this.properties.getChangeLog());
-			liquibase.setContexts(this.properties.getContexts());
+			liquibase.setContexts(determineContexts());
 			liquibase.setDefaultSchema(this.properties.getDefaultSchema());
 			liquibase.setDropFirst(this.properties.isDropFirst());
 			liquibase.setShouldRun(this.properties.isEnabled());
@@ -131,6 +136,15 @@ public class LiquibaseAutoConfiguration {
 			liquibase.setRollbackFile(this.properties.getRollbackFile());
 			liquibase.setTestRollbackOnUpdate(this.properties.isTestRollbackOnUpdate());
 			return liquibase;
+		}
+
+		private String determineContexts() {
+			if(!this.properties.isAppendProfilesToContext() || StringUtils.isEmpty(this.activeProfilesCsv)) {
+				return this.properties.getContexts();
+			} else if(StringUtils.isEmpty(this.properties.getContexts())) {
+				return this.activeProfilesCsv;
+			}
+			return StringUtils.arrayToCommaDelimitedString(new String[]{this.properties.getContexts(),this.activeProfilesCsv});
 		}
 
 		private SpringLiquibase createSpringLiquibase() {
